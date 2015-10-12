@@ -17,6 +17,8 @@
   filename=$(basename "$file")
   logfile=~/Library/Logs/"epubcheck.$filename.log"
 
+  /usr/local/bin/terminal-notifier -sender com.apple.iBooksX -title "$filename" -message "Check started." -group epubcheck_started
+
   if /usr/local/bin/epubcheck "$file" &amp;&gt; "$logfile"; then
     if cat "$logfile" | grep ^WARNING; then
       msg='EPUB has warnings. Click to view Log.'
@@ -26,11 +28,12 @@
   else
     msg='EPUB has errors. Click to view Log.'
   fi
-  
 
-  /usr/local/bin/terminal-notifier -sender com.apple.iBooksX -title "$filename" -message "$msg" -open "file://$logfile"
+  /usr/local/bin/terminal-notifier -sender com.apple.iBooksX -title "$filename" -message "$msg" -open "file://$logfile" -remove epubcheck_started
 
 done</string>
+					<key>CheckedForUserDefaultShell</key>
+					<true/>
 					<key>inputMethod</key>
 					<integer>1</integer>
 					<key>shell</key>
