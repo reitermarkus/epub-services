@@ -12,26 +12,53 @@
 				<key>ActionParameters</key>
 				<dict>
 					<key>COMMAND_STRING</key>
-					<string>for file in "$@"; do
+					<string>PATH="/usr/local/bin:$PATH"
 
-  filename=$(basename "$file")
-  logfile=~/Library/Logs/"epubcheck.$filename.log"
+exit_code="0"
 
-  /usr/local/bin/terminal-notifier -sender com.apple.iBooksX -title "$filename" -message "Check started." -group epubcheck_started
+for file in "$@"; do
+  filename=${file##*/}
 
-  if /usr/local/bin/epubcheck "$file" &amp;&gt; "$logfile"; then
-    if cat "$logfile" | grep ^WARNING; then
-      msg='EPUB has warnings. Click to view Log.'
-    else
-      msg='EPUB is valid.'
+  uuid="$(uuidgen)"
+  logdir="${HOME}/Library/Logs/EpubCheck"
+  logfile="${logdir}/${uuid}.log"
+
+  mkdir -p "${logdir}"
+
+  first_line=0
+
+  epubcheck "${file}" 2&gt;&amp;1 | while read line; do
+    if [ ${first_line} -eq 0 ]; then
+      terminal-notifier \
+        -sender 'com.apple.iBooksX' \
+        -title "${filename}" \
+        -message "${line}" \
+        -group "${uuid}"
+
+      first_line=1
     fi
-  else
-    msg='EPUB has errors. Click to view Log.'
+
+    echo "${line}"
+  done &gt; "${logfile}"
+
+  if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    exit_code=1
   fi
 
-  /usr/local/bin/terminal-notifier -sender com.apple.iBooksX -title "$filename" -message "$msg" -open "file://$logfile" -remove epubcheck_started
+  msg="$(tail -n 3 "${logfile}" | head -n 2)"
 
-done</string>
+  terminal-notifier \
+    -remove "${uuid}" \
+    -sender 'com.apple.iBooksX' \
+    -title "${filename}" \
+    -message "${msg}" \
+    -open "file://${logfile}" \
+    -timeout 3600 &lt;&amp;- &gt;&amp;- 2&gt;&amp;- &amp; # hack so AppleScript Runner does not wait for timeout
+
+done
+
+exit "${exit_code}"
+</string>
 					<key>CheckedForUserDefaultShell</key>
 					<true/>
 					<key>inputMethod</key>
